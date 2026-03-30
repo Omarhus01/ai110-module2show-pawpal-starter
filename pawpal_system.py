@@ -14,6 +14,7 @@ class Task:
     recurrence: str
     due_date: date
     is_completed: bool = False
+    next_due_date: Optional[date] = None
 
     def is_due_on(self, target_date: date) -> bool:
         pass
@@ -74,6 +75,9 @@ class Scheduler:
         pass
 
     def resolve_conflicts(self, tasks: list) -> list:
+        pass
+
+    def filter_tasks(self, tasks: list, pet_name: str = None, completed: bool = None) -> list:
         pass
 
     def explain_plan(self, tasks: list) -> list:
