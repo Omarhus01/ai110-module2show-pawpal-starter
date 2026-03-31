@@ -36,13 +36,24 @@ After reviewing the skeleton, two changes were made based on potential logic bot
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers three constraints when building the daily plan:
+
+1. **Scheduled time** — Tasks are sorted chronologically so the owner sees them in the order they need to happen throughout the day.
+2. **Priority (1–5)** — When two tasks share the same time slot, higher priority tasks are placed first. This ensures critical tasks like medications are never buried behind lower-priority ones like grooming.
+3. **Recurrence** — The scheduler only includes tasks that are due on the target date based on their recurrence rule (once, daily, weekly), so the owner is never shown tasks that do not apply to today.
+
+Time was chosen as the primary sort key because a daily schedule must be chronological to be usable. Priority was chosen as the secondary key because it resolves ties in a meaningful way — if two things are due at the same time, the more important one should come first.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The scheduler's conflict detection only flags tasks that share the **exact same start time** — it does not check for overlapping durations. For example, if "Morning Walk" starts at 08:00 and lasts 30 minutes, and "Vet Check-in" starts at 08:15, the system will not flag this as a conflict even though the two tasks overlap in real time.
+
+This tradeoff is reasonable for this scenario because:
+1. Most pet care tasks are short and sequential — owners typically do not run two tasks in parallel.
+2. Checking for duration overlap would require knowing the end time of every task and comparing all pairs, which adds complexity without much benefit for a basic daily planner.
+3. A warning-based system (rather than a hard block) already gives the owner enough information to adjust manually if needed.
+
+A future improvement would be to calculate `end_time = scheduled_time + duration_min` for each task and flag any pair where one task's window overlaps another's.
 
 ---
 

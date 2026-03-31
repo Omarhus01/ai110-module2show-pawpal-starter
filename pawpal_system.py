@@ -154,6 +154,48 @@ class Scheduler:
             result = [t for t in result if t.is_completed == completed]
         return result
 
+    def handle_recurring(self, task: Task, pet: Pet) -> Optional[Task]:
+        """
+        If a completed task has a daily or weekly recurrence, create a new Task instance
+        for the next occurrence and add it directly to the pet's task list.
+        Returns the new Task if created, or None if the task does not recur.
+        """
+        if not task.is_completed or task.recurrence == "once":
+            return None
+
+        if task.recurrence == "daily":
+            next_date = date.today() + timedelta(days=1)
+        elif task.recurrence == "weekly":
+            next_date = date.today() + timedelta(weeks=1)
+        else:
+            return None
+
+        new_task = Task(
+            task_id=task.task_id + "_next",
+            title=task.title,
+            category=task.category,
+            duration_min=task.duration_min,
+            priority=task.priority,
+            scheduled_time=task.scheduled_time,
+            recurrence=task.recurrence,
+            due_date=next_date,
+            is_completed=False
+        )
+        pet.add_task(new_task)
+        return new_task
+
+    def mark_task_complete(self, task_id: str) -> Optional[Task]:
+        """
+        Find a task by ID across all pets, mark it complete, and trigger recurring logic.
+        Returns the newly created next-occurrence Task if the task recurs, otherwise None.
+        """
+        for pet in self.owner.pets:
+            for task in pet.tasks:
+                if task.task_id == task_id:
+                    task.mark_complete()
+                    return self.handle_recurring(task, pet)
+        return None
+
     def explain_plan(self, tasks: list) -> list:
         """Return a human-readable explanation string for each task in the plan."""
         explanations = []
