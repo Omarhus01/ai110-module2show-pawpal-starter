@@ -53,7 +53,9 @@ This tradeoff is reasonable for this scenario because:
 2. Checking for duration overlap would require knowing the end time of every task and comparing all pairs, which adds complexity without much benefit for a basic daily planner.
 3. A warning-based system (rather than a hard block) already gives the owner enough information to adjust manually if needed.
 
-A future improvement would be to calculate `end_time = scheduled_time + duration_min` for each task and flag any pair where one task's window overlaps another's.
+**Known bug discovered during testing:** The conflict resolution logic always shifts the conflicting task forward by a fixed 30 minutes, regardless of how long the first task actually is. During manual testing, a "Morning Walk" for Jax was set to 60 minutes starting at 08:00. When "home play" for kitty was also scheduled at 08:00, the system shifted kitty's task to 08:30 — which is still inside the 60-minute walk window. The correct behavior would be to shift the conflicting task forward by the full duration of the blocking task (in this case, 60 minutes to 09:00). This is a logic gap that should be fixed in the next iteration by replacing the hardcoded 30-minute shift with `scheduled_time + duration_min` of the blocking task.
+
+A future improvement would be to calculate `end_time = scheduled_time + duration_min` for each task and use that as both the conflict detection threshold and the resolution offset.
 
 ---
 
@@ -61,13 +63,20 @@ A future improvement would be to calculate `end_time = scheduled_time + duration
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+AI was used across every phase of the project in different ways:
+
+- **Design brainstorming (Phase 1)** — AI helped generate the initial Mermaid.js UML diagram and suggested adding `daily_time_budget_min` to Owner and `max_parallel_tasks` to Scheduler, which made the design more realistic.
+- **Scaffolding (Phase 2)** — Agent mode was used to flesh out the full implementation of all four classes from the skeleton, saving time on boilerplate while keeping the architecture decisions in human hands.
+- **Algorithmic logic (Phase 4)** — AI suggested using a `lambda` with Python's `sorted()` for the time-based sort, and using `timedelta` for the recurring task date calculation.
+- **Test generation (Phase 5)** — AI drafted the test suite structure, which was then reviewed and adjusted to ensure the tests were meaningful and not just checking obvious things.
+
+The most helpful prompts were specific and context-rich — for example, asking "how should the Scheduler retrieve all tasks from the Owner's pets?" produced a much more useful answer than a vague question like "how do I connect these classes?"
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+When AI suggested a more "Pythonic" version of `detect_conflicts()` using `itertools.combinations`, the suggestion was reviewed and rejected. While the `itertools` version was shorter, it checked every pair of tasks instead of using a dictionary to track seen times, making it harder to read and slightly less efficient. The original dictionary-based version was kept because clarity matters more than cleverness in code that others will maintain.
+
+The AI suggestion was verified by running both versions manually in the terminal and comparing their outputs — they produced the same results, confirming the choice to keep the readable version was safe.
 
 ---
 
@@ -75,13 +84,22 @@ A future improvement would be to calculate `end_time = scheduled_time + duration
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+Six behaviors were tested in the automated suite:
+
+1. `mark_complete()` correctly flips the task's completion status
+2. Adding a task to a pet increases the pet's task count
+3. Tasks added out of chronological order are returned in the correct sorted order
+4. Marking a daily task complete creates a new task due the following day
+5. Two tasks at the same time are correctly flagged as a conflict
+6. A pet with no tasks returns an empty schedule without crashing
+
+These tests were important because they cover the core promise of the app — that the schedule will always be in the right order, that conflicts will be caught, and that recurring tasks will never be forgotten.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+Confidence level: **★★★★☆**
+
+The core behaviors are solid and all 6 tests pass. However, the known bug in conflict resolution (shifting by a fixed 30 minutes instead of the blocking task's full duration) reduces confidence. If the next thing to test were added, the first would be: does `resolve_conflicts()` correctly shift tasks by the full duration of the blocking task, not a hardcoded value? That test would currently fail and point directly to the bug.
 
 ---
 
@@ -89,12 +107,12 @@ A future improvement would be to calculate `end_time = scheduled_time + duration
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The "CLI-first" workflow was the best decision made in this project. Building and verifying all the logic in `main.py` before touching the Streamlit UI meant that by the time `app.py` was connected, the backend was already proven to work. This made the UI integration in Phase 3 fast and nearly bug-free — there was no uncertainty about whether a problem was in the logic or the UI, because the logic had already been tested in the terminal.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+The conflict resolution logic would be the first thing to fix in the next iteration. The hardcoded 30-minute shift should be replaced with a dynamic shift based on the blocking task's actual duration. For example, if "Morning Walk" lasts 60 minutes starting at 08:00, any conflicting task should be pushed to 09:00, not 08:30. This would make the scheduler genuinely safe rather than just approximately correct.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The most important thing learned was that AI is a powerful collaborator but a poor architect. AI could generate code, suggest methods, and draft tests quickly — but it had no way of knowing which tradeoffs were acceptable, which design decisions matched the project's goals, or when a "cleaner" suggestion would actually make the system harder to understand. The human role was not just to type prompts but to stay in charge of every design decision, review every suggestion critically, and catch the things AI missed — like the conflict resolution bug that only surfaced during real manual testing.
